@@ -45,3 +45,63 @@ before providing me with the flask backend implementation, please provide me wit
 
 - also know that i dont want a separate vector_stores_uuid.collection since i will be using faiss for that and those stores will be stored in the backend.
 ```
+---
+
+please understand my usecase and provide me with a proper database structure and further code. i want to use mongodb compass for this project.  i am using shadcn/ui, react jsx vite. 
+First please fix my login/register page, each user will have a different session, add proper authentication and close the connection every single time. also add a random avatar image for every user from shad cn. here is my file structure and i will be providing you with some of my code:
+
+```
+.
+├── components.json
+├── eslint.config.js
+├── index.html
+├── jsconfig.json
+├── MONGO_STRUCTURE.md
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── public
+│   └── vite.svg
+├── README.md
+├── src
+│   ├── App.jsx
+│   ├── assets
+│   │   └── react.svg
+│   ├── components
+│   │   ├── auth
+│   │   │   ├── LoginForm.jsx
+│   │   │   └── RegisterForm.jsx
+│   │   ├── ChatView.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── Instructions.jsx
+│   │   ├── ModeToggle.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── SummarizeView.jsx
+│   │   ├── ThemeProvider.jsx
+│   │   └── ui
+│   │       ├── alert.jsx
+│   │       ├── avatar.jsx
+│   │       ├── button.jsx
+│   │       ├── dropdown-menu.jsx
+│   │       ├── input.jsx
+│   │       ├── select.jsx
+│   │       ├── separator.jsx
+│   │       ├── sheet.jsx
+│   │       ├── sidebar.jsx
+│   │       ├── skeleton.jsx
+│   │       └── tooltip.jsx
+│   ├── hooks
+│   │   └── use-mobile.jsx
+│   ├── index.css
+│   ├── lib
+│   │   ├── db.js
+│   │   └── utils.js
+│   ├── main.jsx
+│   └── models
+│       ├── Document.js
+│       └── User.js
+├── tailwind.config.js
+└── vite.config.js
+
+10 directories, 41 files
+```

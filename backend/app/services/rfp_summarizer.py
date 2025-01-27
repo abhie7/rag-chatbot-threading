@@ -1,3 +1,14 @@
+# from transformers import pipeline
+
+# summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+
+# async def process_rfp(text):
+#     # You may want to implement a more sophisticated summarization method
+#     summary = summarizer(text, max_length=150, min_length=50, do_sample=False)[0]['summary_text']
+#     return summary
+
+
+
 import os
 from typing import Optional, List
 import uuid

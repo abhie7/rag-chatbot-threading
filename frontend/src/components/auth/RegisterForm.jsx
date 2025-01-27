@@ -1,91 +1,209 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Lock, Mail, User, RefreshCw } from "lucide-react";
+import { registerUser } from "@/lib/api";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 export default function RegisterForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    displayName: "",
+  });
+  const [avatarSeed, setAvatarSeed] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (password !== confirmPassword) {
-            alert('Passwords do not match');
-            return;
-        }
+  useEffect(() => {
+    generateNewAvatar();
+  }, []);
 
-        try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
+  const generateNewAvatar = () => {
+    const newSeed = Math.random().toString(36).substring(7);
+    setAvatarSeed(newSeed);
+  };
 
-            if (response.ok) {
-                navigate('/login');
-            }
-        } catch (error) {
-            console.error('Registration error:', error);
-        }
-    };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-    return (
-        <div className='w-full max-w-md p-6 bg-card rounded-lg shadow-md border'>
-            <h2 className='text-2xl font-bold mb-6 text-center'>Register</h2>
-            <form onSubmit={handleSubmit} className='space-y-4'>
-                <div>
-                    <label
-                        htmlFor='email'
-                        className='block text-sm font-medium mb-1'
-                    >
-                        Email
-                    </label>
-                    <Input
-                        id='email'
-                        type='email'
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label
-                        htmlFor='password'
-                        className='block text-sm font-medium mb-1'
-                    >
-                        Password
-                    </label>
-                    <Input
-                        id='password'
-                        type='password'
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label
-                        htmlFor='confirmPassword'
-                        className='block text-sm font-medium mb-1'
-                    >
-                        Confirm Password
-                    </label>
-                    <Input
-                        id='confirmPassword'
-                        type='password'
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <Button type='submit' className='w-full'>
-                    Register
-                </Button>
-            </form>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    const { email, password, confirmPassword, displayName } = formData;
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await registerUser({
+        email,
+        password,
+        display_name: displayName,
+        avatarSeed,
+      });
+      navigate("/dashboard");
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg border">
+          <h2 className="text-3xl font-bold mb-8 text-center">
+            Create Account
+          </h2>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <Avatar className="h-24 w-24">
+                <AvatarImage
+                  src={`https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}`}
+                />
+                <AvatarFallback className="text-lg">
+                  {formData.displayName
+                    ? formData.displayName.slice(0, 2).toUpperCase()
+                    : "?"}
+                </AvatarFallback>
+              </Avatar>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={generateNewAvatar}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    New Avatar
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Your Avatar may or may not change after you log in :)
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  className="pl-10"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="displayName" className="text-sm font-medium">
+                Display Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder="Choose a display name"
+                  className="pl-10"
+                  value={formData.displayName}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Create a password"
+                  className="pl-10"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="text-sm font-medium">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  className="pl-10"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+          </form>
+          <div className="mt-6 text-center text-sm">
+            <span className="text-muted-foreground">
+              Already have an account?{" "}
+            </span>
+            <Link to="/login">
+              <Button variant="link" className="p-0">
+                Sign in
+              </Button>
+            </Link>
+          </div>
         </div>
-    );
+      </div>
+    </TooltipProvider>
+  );
 }
