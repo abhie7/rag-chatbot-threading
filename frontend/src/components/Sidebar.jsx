@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "./ui/button"
@@ -21,7 +22,6 @@ import {
 } from "./ui/tooltip"
 import { extractTextFromFile } from "../lib/fileUtils"
 import { processRfp } from "../lib/api"
-import MinioService from "../lib/minioClient"
 
 import {
   Collapsible,
@@ -74,23 +74,9 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
 
       try {
         const extractedText = await extractTextFromFile(file)
-
         const response = await processRfp(file, extractedText, user, authToken)
 
-        if (!response.ok) {
-          throw new Error("Failed to upload file")
-        }
-
-        const result = await response.json()
-        console.log("File processed successfully:", result)
-
-        // Upload file to Minio
-        const uploadResponse = await MinioService.UploadFile(
-          [file],
-          "rfp-automation",
-          "/uploaded-files/"
-        )
-        console.log("File uploaded to Minio:", uploadResponse)
+        console.log("File processed successfully:", response)
 
         // Update user documents
         const updatedUser = {
@@ -98,7 +84,7 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
           documents: [
             ...(user.documents || []),
             {
-              document_uuid: result.document_uuid,
+              document_uuid: response.document_uuid,
               filename: file.name,
               created_at: new Date().toISOString(),
             },
@@ -264,13 +250,17 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
                     <Button
                       className={`flex items-center px-2 ${
                         expanded ? "w-full" : "w-12"
-                      } transition-all`} // Adjust width based on expanded state
+                      } transition-all`}
                       onClick={() =>
                         document.getElementById("file-upload").click()
-                      } // Trigger file input on button click
+                      }
+                      disabled={isUploading}
                     >
                       {isUploading ? (
-                        <Loader className='h-4 w-4 animate-spin' />
+                        <>
+                          <Loader className='h-4 w-4 animate-spin mr-2' />
+                          {expanded && <span>Uploading...</span>}
+                        </>
                       ) : (
                         <>
                           {expanded && (
@@ -278,13 +268,7 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
                               Upload RFP
                             </span>
                           )}
-                          <label
-                            htmlFor='file-upload'
-                            className='cursor-pointer flex items-center justify-center'
-                          >
-                            <PlusCircle className='h-4 w-4' />
-                            <span className='sr-only'>Upload file</span>
-                          </label>
+                          <PlusCircle className='h-4 w-4' />
                         </>
                       )}
                       <input
@@ -293,6 +277,7 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
                         className='hidden'
                         onChange={handleFileUpload}
                         accept='.pdf'
+                        disabled={isUploading}
                       />
                     </Button>
                   </TooltipTrigger>

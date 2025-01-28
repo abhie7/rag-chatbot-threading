@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, rfp
+from app.routes import auth, rfp, minio
 from app.database import init_db
 from contextlib import asynccontextmanager
 import logging
@@ -30,6 +30,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(rfp.router, prefix="/api", tags=["rfp"])
+app.include_router(minio.router, prefix="/api", tags=["rfp"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,20 +1,27 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Body
-from app.models.rfp import RFP, RFPResponse
+from fastapi import APIRouter, Body, HTTPException, Depends, UploadFile, File
+from app.models.rfp import RFPResponse
 from app.services.rfp_summarizer import process_rfp
 from app.services.vector_store import create_vector_store, query_vector_store
 from app.services.auth import AuthService
-from fastapi.responses import FileResponse
 from datetime import datetime
 import os
-import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
+from minio import Minio
 from dotenv import load_dotenv
+
 load_dotenv()
 
 router = APIRouter()
 client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("MONGO_DB")]
+
+minio_client = Minio(
+    os.getenv("MINIO_END_POINT"),
+    access_key=os.getenv("MINIO_ACCESS_KEY"),
+    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    secure=os.getenv("MINIO_USE_SSL") == "true"
+)
 
 @router.post("/process_rfp", response_model=RFPResponse)
 async def process_rfp_route(
@@ -22,15 +29,20 @@ async def process_rfp_route(
     current_user: dict = Depends(AuthService.get_current_user)
 ):
     try:
-        # Save uploaded file
-        file_path = f"uploads/{file.filename}"
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+        # Upload file to Minio
+        bucket_name = "rfp-automation"
+        object_name = f"uploaded-files/{file.filename}"
+        content = await file.read()
+        minio_client.put_object(
+            bucket_name,
+            object_name,
+            content,
+            length=len(content),
+            content_type=file.content_type
+        )
 
         # Process the RFP
-        with open(file_path, "r") as f:
-            text = f.read()
-
+        text = content.decode("utf-8")
         vector_store_uuid = await create_vector_store(text)
         summary = await process_rfp(text)
 
@@ -40,7 +52,8 @@ async def process_rfp_route(
             "user_uuid": current_user["user_uuid"],
             "filename": file.filename,
             "file_type": file.content_type,
-            "original_text": text,
+            "minio_bucket": bucket_name,
+            "minio_object_name": object_name,
             "vector_store_uuid": vector_store_uuid,
             "summary": summary,
             "past_summaries": [],

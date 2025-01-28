@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_BACKEND_API_URL
+import MinioService from "./minioClient"
+
+const API_URL = import.meta.env.VITE_API_URL
 
 export const loginUser = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
@@ -34,7 +36,6 @@ export const registerUser = async (userData) => {
   return response.json()
 }
 
-// Add this new function to update avatar
 export const updateUserAvatar = async (userId, seed) => {
   const response = await fetch(`${API_URL}/user/avatar`, {
     method: "POST",
@@ -53,26 +54,36 @@ export const updateUserAvatar = async (userId, seed) => {
 }
 
 export const processRfp = async (file, extractedText, user, accessToken) => {
-  const response = await fetch(`${API_URL}/process_rfp`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      filename: file.name,
-      fileType: file.type,
-      text: extractedText,
-      user_uuid: user.user_uuid,
-    }),
-  })
+  try {
+    // First, upload the file using MinioService
+    const uploadResult = await MinioService.uploadFile(
+      file,
+      "rfp-automation",
+      "/uploaded-files/"
+    )
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.detail || error.message || "Something went wrong")
+    console.log("Upload result:", uploadResult)
+
+    // Then, send the processing request to the backend
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const response = await fetch(`${API_URL}/process_rfp`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || error.message || "Something went wrong")
+    }
+
+    return response.json()
+  } catch (error) {
+    console.error("Error in processRfp:", error)
+    throw error
   }
-
-  return response.json()
 }
-
-// create a new function to send pdf file to the backend using minio client
