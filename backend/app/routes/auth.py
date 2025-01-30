@@ -5,7 +5,7 @@ from app.services.auth import AuthService
 from app.database import init_db
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @router.post("/register", response_model=UserResponse)
 async def register(user: UserCreate):
@@ -28,10 +28,10 @@ async def login(user: UserLogin):
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found")    
     
-    return {"access_token": access_token, "token_type": "bearer", "avatar_seed": user_data.avatar_seed, "email": user.email, "display_name": user_data.display_name, "user_uuid": user_data.user_uuid}
+    return {"access_token": access_token, "token_type": "bearer", "avatar_seed": user_data.avatar_seed, "email": user.email, "display_name": user_data.display_name, "user_uuid": user_data.user_uuid, "documents": user_data.documents}
 
-@router.get("/me", response_model=UserResponse)
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    user = await AuthService.get_current_user(token)
-    return UserResponse(**user.model_dump())
+# @router.get("/me", response_model=UserResponse)
+# async def get_current_user(token: str = Depends(oauth2_scheme)):
+#     user = await AuthService.get_current_user(token)
+#     return UserResponse(**user.model_dump())
 

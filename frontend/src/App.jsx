@@ -1,58 +1,49 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom"
-import { ThemeProvider } from "./components/ThemeProvider"
-import LoginForm from "./components/auth/LoginForm"
-import RegisterForm from "./components/auth/RegisterForm"
-import Dashboard from "./components/Dashboard"
-import { useEffect, useState } from "react"
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './components/ThemeProvider';
+import LoginForm from './components/auth/LoginForm';
+import RegisterForm from './components/auth/RegisterForm';
+import Dashboard from './components/Dashboard';
+import { useEffect, useState } from 'react';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const user = sessionStorage.getItem("user")
+  const user = sessionStorage.getItem('user');
   if (!user) {
-    return <Navigate to='/login' replace />
+    return <Navigate to="/login" replace />;
   }
-  return children
-}
+  return children;
+};
 
 // Public Route Component (redirects to dashboard if logged in)
 const PublicRoute = ({ children }) => {
-  const user = sessionStorage.getItem("user")
+  const user = sessionStorage.getItem('user');
   if (user) {
-    return <Navigate to='/dashboard' replace />
+    return <Navigate to="/dashboard" replace />;
   }
-  return children
-}
+  return children;
+};
 
 function App() {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Simulate checking auth state
-    setLoading(false)
-  }, [])
+    setLoading(false);
+  }, []);
 
   if (loading) {
-    return (
-      <div className='flex items-center justify-center min-h-screen'>
-        Loading...
-      </div>
-    )
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
     <Router>
       <ThemeProvider>
-        <div className='min-h-screen bg-background '>
+        <div className="min-h-screen bg-background ">
           <Routes>
             {/* Public Routes */}
-            <Route path='/' element={<Navigate to='/login' replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route
-              path='/login'
+              path="/login"
               element={
                 <PublicRoute>
                   <LoginForm />
@@ -60,7 +51,7 @@ function App() {
               }
             />
             <Route
-              path='/register'
+              path="/register"
               element={
                 <PublicRoute>
                   <RegisterForm />
@@ -70,21 +61,21 @@ function App() {
 
             {/* Protected Routes */}
             <Route
-              path='/dashboard'
+              path="/dashboard"
               element={
-                <PublicRoute>
+                <ProtectedRoute>
                   <Dashboard />
-                </PublicRoute>
+                </ProtectedRoute>
               }
             />
 
             {/* Catch all route */}
-            <Route path='*' element={<Navigate to='/login' replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </ThemeProvider>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

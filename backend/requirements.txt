@@ -32,4 +32,11 @@ pydantic
 passlib
 python-jose
 python-multipart
-
+llama-index
+llama-index-core
+llama-index-embeddings-huggingface 
+llama-index-vector_stores-faiss
+faiss-cpu
+llama-index-llms-lmstudio
+pymupdf4llm
+minio

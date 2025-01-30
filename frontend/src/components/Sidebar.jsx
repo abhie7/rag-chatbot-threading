@@ -9,7 +9,7 @@ import {
   ChevronRight,
   FileText,
   Home,
-  PlusCircle,
+  Upload,
   LogOut,
   FolderOpen,
   Loader,
@@ -20,9 +20,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip"
-import { extractTextFromFile } from "../lib/fileUtils"
-import { processRfp } from "../lib/api"
-
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -34,6 +31,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Instructions from "@/components/Instructions"
+import { uploadFileToMinio, processRfp, getDocument } from "../lib/api"
 
 export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
   const [expanded, setExpanded] = useState(true)
@@ -44,27 +42,35 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
   const [isUploading, setIsUploading] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState(null)
 
-  const handleDocClick = (doc) => {
-    setSelectedDoc(doc)
-    console.log("Selected document:", doc)
+  const handleDocClick = async (doc) => {
+    try {
+      setSelectedDoc(doc)
+      // Fetch full document from database
+      const fullDoc = await getDocument(user.user_uuid, doc.document_hash)
+      if (fullDoc) {
+        sessionStorage.setItem("document", JSON.stringify(fullDoc))
+      }
+    } catch (error) {
+      console.error("Error fetching document:", error)
+    }
   }
 
   // const documents = user.documents || []
   // sample documents array for testing
-  const documents = [
-    {
-      document_uuid: "1",
-      filename: "sample.pdf",
-      created_at: new Date().toISOString(),
-    },
-    {
-      document_uuid: "2",
-      filename: "sample.docx",
-      created_at: new Date().toISOString(),
-    },
-  ]
+  // const documents = [
+  //   {
+  //     document_hash: "1",
+  //     filename: "sample.pdf",
+  //     created_at: new Date().toISOString(),
+  //   },
+  //   {
+  //     document_hash: "2",
+  //     filename: "sample.docx",
+  //     created_at: new Date().toISOString(),
+  //   },
+  // ];
 
-  const authToken = user.token
+  const authToken = user.access_token
 
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0]
@@ -73,31 +79,43 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
       setIsUploading(true)
 
       try {
-        const extractedText = await extractTextFromFile(file)
-        const response = await processRfp(file, extractedText, user, authToken)
+        const response = await uploadFileToMinio(file)
+        console.log("[File Upload]", response)
+        const { bucket, objectName, url, etag } = response
 
-        console.log("File processed successfully:", response)
+        const result = await processRfp({
+          user_uuid: user.user_uuid,
+          bucket,
+          object_name: objectName,
+          url,
+          etag,
+          filename: file.name,
+          file_size: file.size,
+          content_type: file.type,
+          upload_date: new Date().toISOString(),
+        })
 
-        // Update user documents
+        console.log("[Process RFP]", result)
+        sessionStorage.setItem("document", JSON.stringify(result))
+
+        // Update user in session storage with new document
         const updatedUser = {
           ...user,
           documents: [
-            ...(user.documents || []),
             {
-              document_uuid: response.document_uuid,
+              document_hash: result.document_hash,
               filename: file.name,
-              created_at: new Date().toISOString(),
+              created_at: result.created_at,
             },
+            ...(user.documents || []),
           ],
         }
         setUser(updatedUser)
         sessionStorage.setItem("user", JSON.stringify(updatedUser))
 
-        // Clear selected file
         setSelectedFile(null)
       } catch (error) {
         console.error("Error processing file:", error)
-        // Handle error (e.g., show error message to user)
       } finally {
         setIsUploading(false)
       }
@@ -185,31 +203,27 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
                     </SidebarGroupLabel>
                     <CollapsibleContent>
                       <SidebarGroupContent className='mx-1 my-2'>
-                        {documents.length > 0 ? (
-                          documents.map((doc) => (
-                            <div
-                              key={doc.document_uuid}
-                              className={`flex items-center rounded-md py-1 ps-3 cursor-pointer ${
-                                selectedDoc?.document_uuid === doc.document_uuid
-                                  ? "bg-foreground text-background"
+                        {user.documents?.length > 0 ? (
+                          user.documents.map((doc) => (
+                            <button
+                              key={doc.document_hash}
+                              className={`flex items-center w-full p-2 text-sm rounded-md hover:bg-accent ${
+                                selectedDoc?.document_hash === doc.document_hash
+                                  ? "bg-accent"
                                   : ""
                               }`}
                               onClick={() => handleDocClick(doc)}
                             >
                               <FileText className='h-4 w-4 mr-2' />
-                              {expanded && (
-                                <div className='flex-1'>
-                                  <p className='text-sm truncate font-medium'>
-                                    {doc.filename}
-                                  </p>
-                                  <p className='text-xs text-muted-foreground font-semibold'>
-                                    {new Date(
-                                      doc.created_at
-                                    ).toLocaleDateString()}
-                                  </p>
+                              <div className='flex-1 text-left'>
+                                <div className='truncate'>{doc.filename}</div>
+                                <div className='text-xs text-muted-foreground'>
+                                  {new Date(
+                                    doc.created_at
+                                  ).toLocaleDateString()}
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            </button>
                           ))
                         ) : (
                           <div className='py-2 text-sm text-muted-foreground'>
@@ -264,11 +278,9 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
                       ) : (
                         <>
                           {expanded && (
-                            <span className='mr-2 font-semibold'>
-                              Upload RFP
-                            </span>
+                            <span className='font-semibold'>Upload RFP</span>
                           )}
-                          <PlusCircle className='h-4 w-4' />
+                          <Upload className='h-4 w-4' />
                         </>
                       )}
                       <input
@@ -293,8 +305,10 @@ export default function CollapsibleSidebar({ selectedFile, setSelectedFile }) {
               )}
             </div>
           </div>
+          <div className={`flex items-center ${expanded ? "flex" : "hidden"}`}>
+            <Instructions />
+          </div>
 
-          <Instructions />
           <div className='border-t pt-4 pb-4'>
             <div
               className={`flex items-center ${

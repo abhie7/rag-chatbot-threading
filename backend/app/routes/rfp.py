@@ -1,60 +1,111 @@
-from fastapi import APIRouter, Body, HTTPException, Depends, UploadFile, File
-from app.models.rfp import RFPResponse
-from app.services.rfp_summarizer import process_rfp
-from app.services.vector_store import create_vector_store, query_vector_store
-from app.services.auth import AuthService
+from fastapi import APIRouter, Body, HTTPException
+from fastapi.encoders import jsonable_encoder
 from datetime import datetime
-import os
-from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
-from minio import Minio
-from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
+from minio import Minio
+from pydantic import BaseModel
+
+from app.services.vector_store import get_summary, save_faiss_index
+from app.services.minio_handler import MinioHandler
+from app.services.utils import convert_to_llamaindex_document, get_time, hash_document_text, parse_pdf_to_md, recursive_split_text
+from app.database import save_document
+
+import os
+from dotenv import load_dotenv
 load_dotenv()
 
 router = APIRouter()
-client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("MONGO_DB")]
+# client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
+# db = client[os.getenv("MONGO_DB")]
 
 minio_client = Minio(
-    os.getenv("MINIO_END_POINT"),
+    os.getenv("MINIO_ENDPOINT"),
     access_key=os.getenv("MINIO_ACCESS_KEY"),
     secret_key=os.getenv("MINIO_SECRET_KEY"),
-    secure=os.getenv("MINIO_USE_SSL") == "true"
+    secure=True
 )
 
-@router.post("/process_rfp", response_model=RFPResponse)
-async def process_rfp_route(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(AuthService.get_current_user)
-):
+class RfpPayload(BaseModel):
+    user_uuid: str
+    bucket: str
+    object_name: str
+    url: str
+    etag: str
+    filename: str
+    file_size: int
+    content_type: str
+    upload_date: str
+
+@router.post("/process_rfp")
+async def process_rfp(payload: RfpPayload):
+    
+    if not payload.user_uuid:
+        raise HTTPException(status_code=400, detail="User UUID is required")
+    
     try:
-        # Upload file to Minio
-        bucket_name = "rfp-automation"
-        object_name = f"uploaded-files/{file.filename}"
-        content = await file.read()
-        minio_client.put_object(
-            bucket_name,
-            object_name,
-            content,
-            length=len(content),
-            content_type=file.content_type
-        )
+        print(f"[Process RFP][{await get_time()}] Hit AA gaya")
+        user_uuid = payload.user_uuid
+        bucket = payload.bucket
+        object_name = payload.object_name
+        url = payload.url
+        etag = payload.etag
+        filename = payload.filename
+        file_size = payload.file_size
+        content_type = payload.content_type
+        upload_date = payload.upload_date
 
-        # Process the RFP
-        text = content.decode("utf-8")
-        vector_store_uuid = await create_vector_store(text)
-        summary = await process_rfp(text)
+        minio_handler = MinioHandler()
+        
+        base_db_path=os.getenv('BASE_DB_PATH')
+        # local directory where the file will be saved
+        local_dir=os.getenv('LOCAL_DIR')
+        local_file_path = os.path.join(local_dir, os.path.basename(object_name))    # full path by appending the object_name
 
-        # Create document in MongoDB
+        try:
+            # download file
+            minio_handler.download_file(
+                bucket_name=bucket,
+                object_name=object_name,
+                local_file_path=local_file_path
+            )
+            
+            # get extracted pdf text in md format
+            md_text = await parse_pdf_to_md(local_file_path)
+            
+            # generate a document hash
+            doc_hash = await hash_document_text(md_text)
+            print(f"[Process RFP][{await get_time()}] Document hash: {doc_hash}")
+
+            doc_db_folder = os.path.join(base_db_path, doc_hash)
+            print(f"[Process RFP][{await get_time()}] Document DB folder: {doc_db_folder}")
+            
+            if not os.path.exists(doc_db_folder):
+                chunks = await recursive_split_text(md_text)
+                documents = await convert_to_llamaindex_document(chunks, local_file_path)
+                await save_faiss_index(documents=documents, db_path=doc_db_folder)
+            else:
+                print(f"[Process RFP][{await get_time()}] Vector DB for already exists at {doc_db_folder}")
+        finally:
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
+                print(f"[Process RFP][{await get_time()}] Deleted temp file: {local_file_path}")
+        
+        summary = await get_summary(md_text)
+                
         document = {
-            "document_uuid": str(ObjectId()),
-            "user_uuid": current_user["user_uuid"],
-            "filename": file.filename,
-            "file_type": file.content_type,
-            "minio_bucket": bucket_name,
+            "user_uuid": user_uuid,
+            "document_hash": doc_hash,
+            "vector_store_uuid": doc_hash,
+            "filename": filename,
+            "content_type": content_type,
+            "file_size": file_size,
+            "minio_bucket": bucket,
             "minio_object_name": object_name,
-            "vector_store_uuid": vector_store_uuid,
+            "minio_etag": etag,
+            "minio_url": url,
+            "upload_date": upload_date,
             "summary": summary,
             "past_summaries": [],
             "chat_history": [],
@@ -62,31 +113,26 @@ async def process_rfp_route(
             "last_accessed": datetime.now()
         }
 
-        result = await db[f"{current_user['user_uuid']}.documents"].insert_one(document)
+        insertion_id = await save_document(document)
 
-        return RFPResponse(
-            document_uuid=document["document_uuid"],
-            filename=file.filename,
-            summary=summary,
-            vector_store_uuid=vector_store_uuid
-        )
+        if isinstance(insertion_id, ObjectId):
+            insertion_id = str(insertion_id)
+
+        print(f"[Process RFP][{await get_time()}] Mongo Document Saved", insertion_id)
+        
+        return jsonable_encoder({**document, "_id": insertion_id})
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/query_rfp")
 async def query_rfp_route(
     document_uuid: str = Body(...),
-    query: str = Body(...),
-    current_user: dict = Depends(AuthService.get_current_user)
+    query: str = Body(...)
 ):
     try:
-        document = await db[f"{current_user['user_uuid']}.documents"].find_one({"document_uuid": document_uuid})
-        if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        vector_store_uuid = document["vector_store_uuid"]
-        response = await query_vector_store(vector_store_uuid, query)
-
-        return {"response": response}
+        ...
+        return {"response": ...}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+

@@ -68,4 +68,3 @@ class AuthService:
         if user is None:
             raise credentials_exception
         return user
-

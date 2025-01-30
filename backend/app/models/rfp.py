@@ -1,21 +1,25 @@
-from beanie import Document
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
-import uuid
+from bson import ObjectId
 
-class RFP(Document):
-    document_uuid: str = str(uuid.uuid4())
-    user_uuid: str
+class Document(BaseModel):
+    document_uuid: str = Field(default_factory=lambda: str(ObjectId()))
     filename: str
-    created_at: datetime = datetime.now()
-    last_accessed: datetime = datetime.now()
-    summary: str
-
-    class Settings:
-        name = "rfps"
-
-class RFPResponse(BaseModel):
-    document_uuid: str
-    filename: str
-    summary: str
+    content_type: str
+    file_size: int
+    minio_bucket: str
+    minio_object_name: str
+    minio_etag: str
+    upload_date: datetime = Field(default_factory=datetime.now)
     vector_store_uuid: str
+    summary: str
+    past_summaries: list = []
+    chat_history: list = []
+    created_at: datetime = Field(default_factory=datetime.now)
+    last_accessed: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        # Allow reading from MongoDB ObjectIds
+        json_encoders = {
+            ObjectId: str
+        }

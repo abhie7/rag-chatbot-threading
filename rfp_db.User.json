@@ -1,0 +1,17 @@
+[{
+  "_id": {
+    "$oid": "679a11f8bfd4ba212f4124a8"
+  },
+  "user_uuid": "55d97216-1a4b-4217-8ae7-c673350be3f1",
+  "email": "admin@admin.com",
+  "hashed_password": "$2b$12$WLo5UhRI5FXfo9hjuynY4uN8S.XMWzP53RdG0yU3ogcqPQMySnbdC",
+  "display_name": "Admin",
+  "avatar_seed": "d8eea644-5c05-4084-8343-ed59b1eddec0",
+  "created_at": {
+    "$date": "2025-01-29T17:03:12.342Z"
+  },
+  "last_login": {
+    "$date": "2025-01-29T17:03:12.342Z"
+  },
+  "documents": []
+}]
