@@ -4,7 +4,6 @@ from datetime import datetime
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from minio import Minio
 from pydantic import BaseModel
 
 from app.services.vector_store import get_summary, save_faiss_index
@@ -20,13 +19,6 @@ router = APIRouter()
 # client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
 # db = client[os.getenv("MONGO_DB")]
 
-minio_client = Minio(
-    os.getenv("MINIO_ENDPOINT"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
-    secure=True
-)
-
 class RfpPayload(BaseModel):
     user_uuid: str
     bucket: str
@@ -39,11 +31,11 @@ class RfpPayload(BaseModel):
     upload_date: str
 
 @router.post("/process_rfp")
-async def process_rfp(payload: RfpPayload):
-    
+async def process_rfp(payload: RfpPayload = Body(...)):
+
     if not payload.user_uuid:
         raise HTTPException(status_code=400, detail="User UUID is required")
-    
+
     try:
         print(f"[Process RFP][{await get_time()}] Hit AA gaya")
         user_uuid = payload.user_uuid
@@ -57,8 +49,7 @@ async def process_rfp(payload: RfpPayload):
         upload_date = payload.upload_date
 
         minio_handler = MinioHandler()
-        
-        base_db_path=os.getenv('BASE_DB_PATH')
+
         # local directory where the file will be saved
         local_dir=os.getenv('LOCAL_DIR')
         local_file_path = os.path.join(local_dir, os.path.basename(object_name))    # full path by appending the object_name
@@ -70,17 +61,19 @@ async def process_rfp(payload: RfpPayload):
                 object_name=object_name,
                 local_file_path=local_file_path
             )
-            
+
             # get extracted pdf text in md format
             md_text = await parse_pdf_to_md(local_file_path)
-            
+
             # generate a document hash
             doc_hash = await hash_document_text(md_text)
             print(f"[Process RFP][{await get_time()}] Document hash: {doc_hash}")
 
-            doc_db_folder = os.path.join(base_db_path, doc_hash)
+            base_db_path=os.getenv('BASE_DB_PATH')
+            user_folder = f"{user_uuid}/{doc_hash}"
+            doc_db_folder = os.path.join(base_db_path, user_folder)
             print(f"[Process RFP][{await get_time()}] Document DB folder: {doc_db_folder}")
-            
+
             if not os.path.exists(doc_db_folder):
                 chunks = await recursive_split_text(md_text)
                 documents = await convert_to_llamaindex_document(chunks, local_file_path)
@@ -91,9 +84,9 @@ async def process_rfp(payload: RfpPayload):
             if os.path.exists(local_file_path):
                 os.remove(local_file_path)
                 print(f"[Process RFP][{await get_time()}] Deleted temp file: {local_file_path}")
-        
+
         summary = await get_summary(md_text)
-                
+
         document = {
             "user_uuid": user_uuid,
             "document_hash": doc_hash,
@@ -119,9 +112,9 @@ async def process_rfp(payload: RfpPayload):
             insertion_id = str(insertion_id)
 
         print(f"[Process RFP][{await get_time()}] Mongo Document Saved", insertion_id)
-        
+
         return jsonable_encoder({**document, "_id": insertion_id})
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

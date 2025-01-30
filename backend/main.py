@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, rfp, minio, documents
+from app.routes import auth, rfp, documents, chat
 from app.database import init_db
 from contextlib import asynccontextmanager
 import logging
+
+from app.routes import download_rfp
 
 logger = logging.getLogger("uvicorn")
 
@@ -28,10 +30,11 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(rfp.router, prefix="/api/rfp", tags=["rfp"])
-app.include_router(minio.router, prefix="/api/minio", tags=["minio"])
+app.include_router(chat.router, prefix="/api/rfp", tags=["chat"])
+app.include_router(download_rfp.router, prefix="/api/downloads", tags=["download_rfp"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=4041, reload=True)
 

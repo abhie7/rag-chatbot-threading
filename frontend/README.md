@@ -4,8 +4,8 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
--   [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
--   [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
 ```
 npm install axios react-router-dom  @radix-ui @radix-ui/react-slot lucide-react react-markdown react-avatar
@@ -43,11 +43,12 @@ before providing me with the flask backend implementation, please provide me wit
 
 - please add A sidebar that collapses to icons from shadcn with  my current features and also the complete features that are required in a saas and in my use case, like the user profile, logout, select files, etc. you know what to do, right?
 
-- also know that i dont want a separate vector_stores_uuid.collection since i will be using faiss for that and those stores will be stored in the backend.
+- also know that i dont want a separate vector_stores_uuid.collection since i will be using faiss for that and those stores will be stored in the
 ```
+
 ---
 
-please understand my usecase and provide me with a proper database structure and further code. i want to use mongodb compass for this project.  i am using shadcn/ui, react jsx vite. 
+please understand my usecase and provide me with a proper database structure and further code. i want to use mongodb compass for this project. i am using shadcn/ui, react jsx vite.
 First please fix my login/register page, each user will have a different session, add proper authentication and close the connection every single time. also add a random avatar image for every user from shad cn. here is my file structure and i will be providing you with some of my code:
 
 ```

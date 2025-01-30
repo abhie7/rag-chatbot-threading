@@ -5,6 +5,7 @@ from llama_index.core import Document
 from bson import ObjectId
 from fastapi.encoders import jsonable_encoder
 from datetime import datetime
+from rich.console import Console
 
 
 async def parse_pdf_to_md(local_file_path):
@@ -38,3 +39,7 @@ async def custom_jsonable_encoder(obj):
 
 async def get_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+async def md(text):
+    console = Console()
+    return console.print(text)

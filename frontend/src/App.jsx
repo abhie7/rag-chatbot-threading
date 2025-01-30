@@ -25,6 +25,8 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedDoc, setSelectedDoc] = useState(null);
 
   useEffect(() => {
     // Simulate checking auth state

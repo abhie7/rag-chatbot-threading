@@ -7,13 +7,15 @@ import ModeToggle from './ModeToggle';
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('summarize');
     const [selectedFile, setSelectedFile] = useState(null);
-    const [summarizedContent, setSummarizedContent] = useState('');
+    const [selectedDoc, setSelectedDoc] = useState(null);
 
     return (
         <div className='flex h-screen bg-background'>
             <CollapsibleSidebar
                 selectedFile={selectedFile}
                 setSelectedFile={setSelectedFile}
+                selectedDoc={selectedDoc}
+                setSelectedDoc={setSelectedDoc}
             />
             <main className='flex-1 overflow-hidden'>
                 <div className='p-4 border-b flex justify-between items-center'>
@@ -43,9 +45,9 @@ export default function Dashboard() {
                 </div>
                 <div className='flex-1 overflow-y-auto p-4'>
                     {activeTab === 'summarize' ? (
-                        <SummarizeView content={summarizedContent} />
+                        <SummarizeView selectedDoc={selectedDoc} />
                     ) : (
-                        <ChatView />
+                        <ChatView  selectedDoc={selectedDoc}/>
                     )}
                 </div>
             </main>

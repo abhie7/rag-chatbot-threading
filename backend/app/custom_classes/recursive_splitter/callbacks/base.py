@@ -10,7 +10,7 @@ from uuid import UUID
 from tenacity import RetryCallState
 
 if TYPE_CHECKING:
-    from backend.app.custom_classes.recursive_splitter.agents import AgentAction, AgentFinish
+    from app.custom_classes.recursive_splitter.agents import AgentAction, AgentFinish
     from app.custom_classes.recursive_splitter.documents import Document
     from app.custom_classes.recursive_splitter.messages import BaseMessage
     from app.custom_classes.recursive_splitter.outputs import ChatGenerationChunk, GenerationChunk, LLMResult

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class MinioHandler:
-    def __init__(self, 
+    def __init__(self,
             endpoint=os.getenv('MINIO_ENDPOINT'),
             access_key=os.getenv('MINIO_ACCESS_KEY'),
             secret_key=os.getenv('MINIO_SECRET_KEY'),
@@ -33,7 +33,7 @@ class MinioHandler:
             )
         except S3Error as e:
             print("MinioHandler: Error in downloading file: e: ", e)
-            
+
 if __name__ == '__main__':
     folder_name='documents'
     file = f'{folder_name}/RFP-SIA-Website-Design-Development-and-Maintenance-Services 2.pdf'

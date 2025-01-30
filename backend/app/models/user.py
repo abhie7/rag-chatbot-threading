@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field
-from typing import List
+from typing import List, Optional
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -10,7 +10,7 @@ load_dotenv()
 class SubDocModel(BaseModel):
     document_hash: str
     filename: str
-    upload_date: str
+    upload_date: Optional[str] = None
 
 class User(Document):
     user_uuid: str = Field(default_factory=lambda: str(uuid.uuid4()))

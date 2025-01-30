@@ -15,11 +15,11 @@ LMSTUDIO_MODEL = os.getenv("LMSTUDIO_MODEL", "llama-3.2-3b-instruct")
 LMSTUDIO_BASE_URL = os.getenv("LMSTUDIO_BASE_URL", "http://192.168.3.202:1234/v1")
 LMSTUDIO_API_KEY = os.getenv("LMSTUDIO_API_KEY", "lm_studio")
 
-# llm = LMStudio(
-#     model_name=LMSTUDIO_MODEL,
-#     base_url=LMSTUDIO_BASE_URL,
-#     temperature=0.5
-# )
+llm = LMStudio(
+    model_name=LMSTUDIO_MODEL,
+    base_url=LMSTUDIO_BASE_URL,
+    temperature=0.5
+)
 
 async def lmstudio_llm(inputs: str) -> Optional[str]:
     client = OpenAI(base_url=LMSTUDIO_BASE_URL, api_key=LMSTUDIO_API_KEY)
@@ -101,8 +101,20 @@ Please include Mandatory or must-have requirements mentioned in the document.
 """
     return prompt
 
-async def get_chat(vector_db_path):
-    print('[Process RFP] Summarization has started!')
+async def get_summary(text: str) -> str:
+    try:
+        prompt = await generate_rfp_prompt(text)
+        llm = LMStudioLLM()
+        summary = await llm._call(prompt)
+        
+        # print(summary)
+        return(summary)
+    except Exception as e:
+        print('[Process RFP] Summarization failed')
+        return None
+
+async def get_chat_output(query, vector_db_path):
+    print('[RFP Chat] Chat has started!')
 
     try:
         embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -116,25 +128,13 @@ async def get_chat(vector_db_path):
         
         index = load_index_from_storage(storage_context=storage_context, embed_model=embed_model)
         
-        query_engine = index.as_chat_engine(llm=..., chat_mode=ChatMode.CONTEXT)
+        query_engine = index.as_chat_engine(llm=llm, chat_mode=ChatMode.CONTEXT)
         
-        response = query_engine.chat(await generate_rfp_prompt())
+        response = query_engine.chat(f"As an intelligent RFP Chatbot Agent, you job is to answer the user's query based on the context provided. Do not mention any other information, just answer the question in a straightforward manner in markdown format. This is the user's query: {query}")
         print(response)
         return(response)
     except Exception as e:
         print(e)
-
-async def get_summary(text: str) -> str:
-    try:
-        prompt = await generate_rfp_prompt(text)
-        llm = LMStudioLLM()
-        summary = await llm._call(prompt)
-        
-        print(summary)
-        return(summary)
-    except Exception as e:
-        print('[Process RFP] Summarization failed')
-        return None
 
 async def main():
     with open('backend/app/documents/sample.md', 'r') as f:
